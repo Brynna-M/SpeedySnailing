@@ -183,9 +183,9 @@ Each snail has:
 - [x] Interactions for hunting and breeding snails.
 
 #### Phase 2: Home Sweet Habitat – User Features & Beautification [In progress]
-- [-] Redesign frontend into a cozy, woodsy snail habitat
+- [ ] Redesign frontend into a cozy, woodsy snail habitat
 - [ ] Implement player profiles with Google OAuth login
-- [-] Allow users to rename snails from the frontend
+- [ ] Allow users to rename snails from the frontend
 - [ ] Add collection tracking and user-specific snail stats
 - [ ] Add habitat stats and states (e.g., cleanliness, temperature)
 - [ ] Use habitat states to influence snail emotions and behaviors
