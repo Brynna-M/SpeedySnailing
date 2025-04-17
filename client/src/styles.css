@@ -1,0 +1,23 @@
+body {
+    font-family: sans-serif;
+    background-color: #f3f3f3;
+    margin: 0;
+    padding: 0;
+  }
+  
+  h1 {
+    color: #4b2e83;
+    text-align: center;
+    margin-top: 1rem;
+  }
+  
+  .snail-card {
+    background: white;
+    padding: 1rem;
+    margin: 1rem auto;
+    border-radius: 12px;
+    width: 300px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    text-align: center;
+  }
+  
