@@ -144,7 +144,7 @@ Each snail has:
   </div>
 
   <div style="text-align: center;">
-    <img src="DribbleNapShell.png" alt="Dribble Napshell" width="150"/>
+    <img src="DribbleNapshell.png" alt="Dribble Napshell" width="150"/>
     <p>Dribble Napshell</p>
   </div>
 
