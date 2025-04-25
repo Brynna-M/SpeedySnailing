@@ -5,11 +5,11 @@ const { Pool } = pkg;
 
 
 
-console.log("🌐 Connecting to:", process.env.VITE_SUPABASE_URL);
+console.log("Connecting to:", process.env.SUPABASE_URL);
 
 
 const pool = new Pool({
-  connectionString: process.env.VITE_SUPABASE_URL,
+  connectionString: process.env.SUPABASE_URL,
   ssl: {
     rejectUnauthorized: false,
   },

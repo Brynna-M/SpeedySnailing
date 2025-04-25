@@ -183,7 +183,7 @@ Each snail has:
 - [x] Interactions for hunting and breeding snails.
 
 #### Phase 2: Home Sweet Habitat – User Features & Beautification [In progress]
-- [ ] Redesign frontend into a cozy, woodsy snail habitat
+- [x] Redesign frontend into a cozy, woodsy snail habitat
 - [ ] Implement player profiles with Google OAuth login
 - [ ] Allow users to rename snails from the frontend
 - [ ] Add collection tracking and user-specific snail stats
@@ -196,11 +196,12 @@ Each snail has:
 - [ ] Create mini-games:
   - [ ] Foraging + hunting
   - [ ] Snail racing (hence the "Speedy" in Speedy Snailing!)
-- [ ] Build a snail "pedia" to view discovered trait combinations
+  - [ ] Snail Derby: Beyblades-esque battling
+- [ ] Build a snail "pedia" or scrapbook to view discovered trait combinations
 
  #### Phase 4: Final Flourishes – Whimsy, Sound & Style
  - [ ] Decoration placement in the habitat
  - [ ] Inventory system (mushrooms, pebbles, decorations...)
- - [ ] Audio ambiance toggle (like forest sounds or gentle music)
+ - [ ] Audio ambiance toggle (like forest sounds or gentle music or hard-core rock for racing)
  - [ ] Achievements / badges (e.g. "First Breed", "10 Snails Collected")
 

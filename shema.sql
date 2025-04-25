@@ -29,5 +29,6 @@ CREATE TABLE snails (
   genetic_traits JSONB,
   parent1_id INTEGER REFERENCES snails(id),
   parent2_id INTEGER REFERENCES snails(id),
-  generation INTEGER DEFAULT 1
+  generation INTEGER DEFAULT 1,
+  lineage INTEGER[]
 );

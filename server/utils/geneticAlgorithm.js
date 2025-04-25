@@ -3,7 +3,21 @@ dotenv.config();
 import supabase from "../config/supabaseClient.js";
 import { getSnailById } from "../db/queries.js";
 
-async function weightedTraitInheritance(p1Id, p2Id, traitType, forceMutation = false) {
+/**
+ * Function to generate a trait from a specified trait group 
+ * based on the two parents, the generation of the snail, 
+ * and the lineage of the snail. There is a small chance of 
+ * mutation dependent on generation.
+ * @param {*} p1Id ID of parent 1
+ * @param {*} p2Id ID of parent 2
+ * @param {*} traitType Trait to be inherited 
+ * @param {*} generation generation #
+ * @param {*} forceMutation forces the mutaiton of a trait
+ * @returns 
+ */
+
+async function weightedTraitInheritance(p1Id, p2Id, traitType, generation, forceMutation = false) {
+   //selecting id and rarity fields of a specific trait type from the trait table
   const { data: traits, error } = await supabase
     .from("traits")
     .select("id, rarity")
@@ -13,30 +27,57 @@ async function weightedTraitInheritance(p1Id, p2Id, traitType, forceMutation = f
 
   const inherited = [p1Id, p2Id];
 
-  if (!forceMutation && Math.random() > 0.05) {
-    // 95% chance to inherit directly
-    return inherited[Math.floor(Math.random() * 2)];
+  //inheriting directly (weighted based on generation number, capped at 33% chance of mutation)
+  const mutationChance = Math.min(0.05 * (generation / 8), 0.33);
+  const shouldMutate = forceMutation || Math.random() < mutationChance;
+
+  //inherit directly (no mutation)
+  if (!shouldMutate) {
+    return inherited[Math.floor(Math.random() * inherited.length)];
   }
 
-  // Mutation path
-  const weight = (rarity) => 6 - rarity;
-  const options = [];
-  for (const trait of traits) {
-    const traitWeight = weight(trait.rarity);
-    for (let i = 0; i < traitWeight; i++) {
-      options.push(trait.id);
+  //prevent edge case: too few traits to mutate (causes infinite loop)
+  if (traits.length <= 2) {
+    return inherited[Math.floor(Math.random() * inherited.length)];
+  }
+
+  //filtering out parent traits so mutation is actually different
+  const nonParentTraits = traits.filter(t => !inherited.includes(t.id));
+
+  //if no valid mutation options remain we fallback to inheriting traits
+  if (nonParentTraits.length === 0) {
+    return inherited[Math.floor(Math.random() * inherited.length)];
+  }
+
+
+  //choosing the mutated trait based on how rare the trait is
+  //custom rarity weights [1 = common, 5 = rare]
+  const rarityWeights = [75, 15, 6, 3, 1];
+  const weightedPool = [];
+  //goes through the list of traits and adds the current trait to the list a number of times based on the weight
+  for (const trait of nonParentTraits) {
+    const weight = rarityWeights[trait.rarity - 1] || 1;
+    for (let i = 0; i < weight; i++) {
+      weightedPool.push(trait.id);
     }
   }
 
-  let mutated;
-  do {
-    mutated = options[Math.floor(Math.random() * options.length)];
-  } while (inherited.includes(mutated));
-
+  //picking from weighted pool
+  const mutated = weightedPool[Math.floor(Math.random() * weightedPool.length)];
   return mutated;
 }
 
-export async function breedSnails(parent1Id, parent2Id) {
+
+/**
+ * Function to handle breeding two snails together where success is based on
+ * charisma scores and the quality of stats is reduced with inbreeding.
+ * @param {*} parent1Id ID of parent 1
+ * @param {*} parent2Id ID of parent 2
+ * @param {*} maxMutationsPerBreeding the maximum amount of mutations allowed
+ * @returns 
+ */
+export async function breedSnails(parent1Id, parent2Id, maxMutationsPerBreeding = 1) {
+  //retrieving parent data from the database
   const [p1, p2] = await Promise.all([
     getSnailById(parent1Id),
     getSnailById(parent2Id),
@@ -44,9 +85,27 @@ export async function breedSnails(parent1Id, parent2Id) {
 
   if (!p1 || !p2) throw new Error("One or both parents not found");
 
+  //charisma compatibility check
+  //uses the average charisma score of the two snails (set to 5 if undefined)
+  const avgCharisma = ((p1.charisma ?? 5) + (p2.charisma ?? 5)) / 2;
+  //randomly generates a threshold (0-6)
+  const compatibilityThreshold = Math.random() * 9;
+
+  //compares the threshold to the average, if the average is less than the threshold the check fails
+  if (avgCharisma < compatibilityThreshold) {
+    console.log(`charisma check failed`)
+    return res.status(400).json({
+      error: "These snails don't like each other very much right now. Try again or maybe pick a more charismatic pairing.",
+    });
+  }
+  
+  //finding the lineage for tracking and figuring out inbreeding level
+  const parent1Lineage = p1.lineage ?? [p1.id];
+  const parent2Lineage = p2.lineage ?? [p2.id];
+  const combinedLineage = [...new Set([p1.id, ...parent1Lineage, p2.id, ...parent2Lineage])];
+  //finding generation (will make mutations more likely)
   const generation = Math.max(p1.generation ?? 1, p2.generation ?? 1) + 1;
 
-  const allowMutation = Math.random() < 0.3;
   const traitKeys = [
     "body_color_id",
     "body_outline_id",
@@ -55,68 +114,24 @@ export async function breedSnails(parent1Id, parent2Id) {
     "eyes_acc_id",
     "shell_acc_id",
     "acc_id",
-    "shell_outline_id" // Include shell_outline_id in the loop
+    "shell_outline_id" 
   ];
 
-  const mutationIndex = allowMutation
-    ? Math.floor(Math.random() * traitKeys.length)
-    : -1;
+  //tracking mutations
+  let mutationsUsed = 0;
 
   const childTraits = {};
 
   for (let i = 0; i < traitKeys.length; i++) {
+    //helps with table compatibility in the database
     const trait = traitKeys[i];
     const traitType = trait.replace("_id", "");
 
-    if (trait === "shell_outline_id") {
-      if (i === mutationIndex) {
-        const { data: all, error } = await supabase
-          .from("traits")
-          .select("id")
-          .eq("trait_type", "shell_outline");
-
-        if (error) throw error;
-
-        const nonParentTraits = all.filter(
-          (t) => t.id !== p1.shell_outline_id && t.id !== p2.shell_outline_id
-        );
-
-        const randomTrait =
-          nonParentTraits[Math.floor(Math.random() * nonParentTraits.length)];
-        childTraits[trait] = randomTrait.id;
-        console.log(`⚠️ MUTATION occurred on shell_outline: trait ${randomTrait.id}`);
-      } else {
-        const inherited = await weightedTraitInheritance(
-          p1.shell_outline_id,
-          p2.shell_outline_id,
-          "shell_outline"
-        );
-        childTraits[trait] = inherited;
-      }
-    } else if (i === mutationIndex) {
-      const { data: all, error } = await supabase
-        .from("traits")
-        .select("id")
-        .eq("trait_type", traitType);
-
-      if (error) throw error;
-
-      const nonParentTraits = all.filter(
-        (t) => t.id !== p1[trait] && t.id !== p2[trait]
-      );
-
-      if (!nonParentTraits.length) {
-        childTraits[trait] = p1[trait];
-      } else {
-        const randomTrait =
-          nonParentTraits[Math.floor(Math.random() * nonParentTraits.length)];
-        childTraits[trait] = randomTrait.id;
-        console.log(`⚠️ MUTATION occurred on ${traitType}: trait ${randomTrait.id}`);
-      }
-    } else {
-      const inherited = await weightedTraitInheritance(p1[trait], p2[trait], traitType);
+    //checks to see if we can and will mutate this trait
+    const allowMutation =.3;
+    const shouldMutate = allowMutation && mutationsUsed < maxMutationsPerBreeding;
+      const inherited = await weightedTraitInheritance(p1[trait], p2[trait], traitType, generation);
       childTraits[trait] = inherited;
-    }
   }
 
   // Dependent shell traits
@@ -139,9 +154,25 @@ export async function breedSnails(parent1Id, parent2Id) {
   const inheritStat = (a, b, variance = 1) =>
     Math.max(0, ((a + b) / 2 + (Math.random() * variance * 2 - variance)).toFixed(2));
 
-  const speed = inheritStat(p1.speed, p2.speed);
-  const slimeiness = inheritStat(p1.slimeiness, p2.slimeiness);
-  const charisma = inheritStat(p1.charisma, p2.charisma);
+  const sharedAncestors = parent1Lineage.filter(id => parent2Lineage.includes(id));
+
+//avoid dividing by 0 and calculate overlap percentage
+const totalUniqueAncestors = new Set([...parent1Lineage, ...parent2Lineage]).size;
+
+let commonAncestryLevel = 0;
+if (sharedAncestors.length > 0 && totalUniqueAncestors > 0) {
+  commonAncestryLevel = sharedAncestors.length / totalUniqueAncestors;
+}
+
+//invert for a penalty: 1 means unrelated, 0 means fully shared ancestry
+const diversityBonus = Math.max(0, 1 - commonAncestryLevel);
+
+// Apply this multiplier to penalize inherited stats
+const speed = inheritStat(p1.speed, p2.speed) * diversityBonus;
+const slimeiness = inheritStat(p1.slimeiness, p2.slimeiness) * diversityBonus;
+const charisma = inheritStat(p1.charisma, p2.charisma) * diversityBonus;
+
+console.log(`🌿 Common ancestry level: ${commonAncestryLevel.toFixed(2)} → diversity bonus: ${diversityBonus.toFixed(2)}`);
 
   const p1Genes = p1.genetic_traits || {};
   const p2Genes = p2.genetic_traits || {};
@@ -166,6 +197,7 @@ export async function breedSnails(parent1Id, parent2Id) {
         parent1_id: parent1Id,
         parent2_id: parent2Id,
         generation,
+        lineage: combinedLineage,
       },
     ])
     .select();

@@ -1,0 +1,19 @@
+.snail {
+    position: absolute;
+    transition: top 3s ease, left 3s ease;
+    will-change: top, left, transform;
+    pointer-events: none;
+  }
+  
+  .snail.facing-left {
+    transform: scaleX(-1);
+  }
+  
+  .snail.idle {
+    transform: scale(1.5);
+  }
+  
+  .snail.facing-left.idle {
+    transform: scaleX(-1) scale(1.5);
+  }
+  

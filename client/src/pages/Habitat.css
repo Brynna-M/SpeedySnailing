@@ -1,0 +1,42 @@
+.habitat-container {
+  height: 1080px;                            
+  width: 1920px;  
+  overflow-x: auto;                        
+  overflow-y: hidden;
+  background-image: url("/Background1.png");
+  background-repeat: no-repeat;
+  background-size: auto 100%;              
+  background-position: left center;
+  display: flex;
+  flex-direction: column;
+}
+
+.red-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background-color: red;
+  border-radius: 50%;
+  z-index: 1000;
+}
+.snail {
+  position: absolute;
+  transition: top 3s ease, left 3s ease, transform 0.3s ease;
+}
+
+.snail.facing-left {
+  transform: scaleX(-1);
+}
+
+.snail.idle {
+  animation: idlePulse 2.5s infinite ease-in-out;
+}
+
+@keyframes idlePulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
